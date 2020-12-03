@@ -40,6 +40,9 @@ def latex_template(name, title):
         rf"    \label{{fig:{name}}}",
         r"\end{figure}"))
 
+def markdown_template(name, title):
+    return rf"![{title}]({name})"
+
 # From https://stackoverflow.com/a/67692
 def import_file(name, path):
     import importlib.util as util
@@ -241,6 +244,44 @@ def watch_daemon_fswatch():
             maybe_recompile_figure(filepath)
 
 
+@cli.command()
+@click.argument('title')
+@click.argument(
+    'root',
+    default=os.getcwd(),
+    type=click.Path(exists=False, file_okay=False, dir_okay=True)
+)
+def markdown_create(title, root):
+    """
+    Creates a figure for use in markdown.
+
+    First argument is the title of the figure
+    Second argument is the figure directory.
+
+    """
+    title = title.strip()
+    file_name = title.replace(' ', '-').lower() + '.svg'
+    pdf_file_name = title.replace(' ', '-').lower() + '.pdf'
+    figures = Path(root).absolute()
+    if not figures.exists():
+        figures.mkdir()
+
+    figure_path = figures / file_name
+    relative_file_name = Path(root) / pdf_file_name
+
+    # If a file with this name already exists, append a '2'.
+    if figure_path.exists():
+        print(title + ' 2')
+        return
+
+    copy(str(template), str(figure_path))
+    add_root(figures)
+    inkscape(figure_path)
+
+    # Print the code for including the figure to stdout.
+    # Copy the indentation of the input.
+    leading_spaces = len(title) - len(title.lstrip())
+    print(indent(markdown_template(relative_file_name, title), indentation=leading_spaces))
 
 @cli.command()
 @click.argument('title')
@@ -249,9 +290,9 @@ def watch_daemon_fswatch():
     default=os.getcwd(),
     type=click.Path(exists=False, file_okay=False, dir_okay=True)
 )
-def create(title, root):
+def latex_create(title, root):
     """
-    Creates a figure.
+    Creates a figure for use in latex.
 
     First argument is the title of the figure
     Second argument is the figure directory.
